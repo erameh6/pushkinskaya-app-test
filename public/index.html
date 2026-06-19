@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>Pushkinskaya Walk</title>
+<script src="embedding.js"></script>
+<style>
+  /* Mature dark theme: near-black canvas, warm metallic-gold accent recalling the
+     street's bronze sculptures and lanterns, restrained serif display + clean sans body. */
+  @import url('https://fonts.googleapis.com/css2?family=Cormorant:wght@500;600;700&family=Inter:wght@400;500;600&display=swap');
+  :root{
+    --bg:#0d0d0f; --panel:#16161a; --panel-2:#1d1d22; --edge:#2a2a31;
+    --text:#ece9e3; --muted:#9a958c; --gold:#c9a35e; --gold-soft:#8a7340;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;line-height:1.55;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:660px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column}
+
+  header{padding:22px 20px 16px;border-bottom:1px solid var(--edge);position:relative}
+  .eyebrow{font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:var(--gold)}
+  h1{font-family:'Cormorant',serif;font-weight:700;font-size:36px;line-height:1.0;margin-top:6px;letter-spacing:.01em}
+  header p{color:var(--muted);font-size:14px;margin-top:8px}
+
+  /* language switch */
+  .lang{position:absolute;top:20px;right:20px;display:flex;border:1px solid var(--edge);border-radius:8px;overflow:hidden}
+  .lang button{background:none;border:none;color:var(--muted);padding:6px 11px;font-family:'Inter';font-size:12px;font-weight:600;cursor:pointer;letter-spacing:.04em}
+  .lang button.on{background:var(--gold);color:#000}
+
+  nav{padding:12px 20px;border-bottom:1px solid var(--edge)}
+  nav select{width:100%;padding:12px;border-radius:10px;border:1px solid var(--edge);background:var(--panel-2);color:var(--text);font-family:'Inter';font-size:14px;font-weight:500}
+
+  main{flex:1;padding:18px 20px 40px}
+  .hidden{display:none}
+
+  #video,#snap,#uploadPreview{width:100%;border-radius:12px;background:#000;aspect-ratio:3/4;object-fit:cover;border:1px solid var(--edge)}
+  .controls{display:flex;gap:10px;margin-top:12px}
+  button.act{flex:1;background:var(--gold);color:#0d0d0f;border:none;padding:13px;border-radius:10px;font-family:'Inter';font-weight:600;font-size:14px;cursor:pointer;letter-spacing:.02em}
+  button.act.ghost{background:none;color:var(--gold);border:1px solid var(--gold-soft)}
+  button.act:disabled{opacity:.4;cursor:default}
+  select{width:100%;padding:11px;border-radius:10px;border:1px solid var(--edge);background:var(--panel-2);color:var(--text);font-family:'Inter';font-size:13px}
+  .hint{font-size:13px;color:var(--muted);margin-top:10px}
+  .gpsline{font-size:12px;color:var(--muted);margin-top:8px;font-variant-numeric:tabular-nums}
+
+  .result{margin-top:16px;background:var(--panel);border:1px solid var(--edge);border-radius:14px;padding:20px;position:relative}
+  .result .conf{position:absolute;top:16px;right:18px;font-size:12px;color:var(--gold);font-weight:600;font-variant-numeric:tabular-nums}
+  .kind{font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold)}
+  .result h2{font-family:'Cormorant',serif;font-weight:700;font-size:27px;line-height:1.05;margin:6px 0 3px}
+  .result .meta{font-size:13px;color:var(--muted);margin-bottom:12px}
+  .result .body{font-size:15px;color:#ddd9d2}
+  .alts{margin-top:16px;border-top:1px solid var(--edge);padding-top:13px}
+  .alts h4{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin-bottom:9px}
+  .alt{display:flex;justify-content:space-between;gap:10px;padding:8px 0;font-size:13px;cursor:pointer;border-bottom:1px solid #202026;color:#cfcbc3}
+  .alt:hover{color:var(--gold)}
+  .alt span:last-child{color:var(--muted);font-variant-numeric:tabular-nums;text-align:right}
+
+  .site{background:var(--panel);border:1px solid var(--edge);border-radius:14px;padding:17px;margin-bottom:12px;cursor:pointer;transition:border-color .2s}
+  .site:hover{border-color:var(--gold-soft)}
+  .site h3{font-family:'Cormorant',serif;font-weight:600;font-size:22px;margin:3px 0}
+  .site .meta{font-size:13px;color:var(--muted)}
+  .site .preview{font-size:14px;color:#ddd9d2;margin-top:8px;max-height:0;overflow:hidden;transition:max-height .35s ease}
+  .site.open .preview{max-height:1100px}
+
+  .gallery{display:flex;gap:8px;overflow-x:auto;margin:10px 0 2px;padding-bottom:4px;-webkit-overflow-scrolling:touch}
+  .gallery img{height:150px;width:auto;border-radius:9px;border:1px solid var(--edge);object-fit:cover;flex:0 0 auto}
+  .gallery.small img{height:96px}
+  .nophoto{font-size:12px;color:var(--muted);font-style:italic;margin:8px 0}
+
+  footer{padding:18px 20px;border-top:1px solid var(--edge);font-size:12px;color:var(--muted);text-align:center}
+  a{color:var(--gold)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="lang">
+      <button id="langRu" class="on" onclick="setLang('ru')">RU</button>
+      <button id="langEn" onclick="setLang('en')">EN</button>
+    </div>
+    <div class="eyebrow" data-i="eyebrow"></div>
+    <h1 data-i="title"></h1>
+    <p data-i="tagline"></p>
+  </header>
+
+  <nav>
+    <select id="navSelect" onchange="showTab(this.value)" aria-label="Menu">
+      <option value="cam" data-i="navCam"></option>
+      <option value="list" data-i="navList"></option>
+      <option value="map" data-i="navAbout"></option>
+    </select>
+  </nav>
+
+  <main>
+    <section id="tab-cam">
+      <video id="video" autoplay playsinline muted></video>
+      <img id="uploadPreview" class="hidden" alt="" />
+      <canvas id="snap" class="hidden"></canvas>
+      <div class="controls">
+        <button class="act" id="btnStart" onclick="startCamera()" data-i="camStart"></button>
+        <button class="act" id="btnShot" onclick="identify()" disabled data-i="identify"></button>
+      </div>
+      <div class="controls" style="margin-top:8px">
+        <button class="act ghost" onclick="document.getElementById('uploadInput').click()" data-i="uploadBtn"></button>
+        <input type="file" id="uploadInput" accept="image/*" class="hidden" onchange="identifyFromUpload(event)" />
+      </div>
+      <div class="controls" style="margin-top:8px">
+        <select id="modeSel"></select>
+      </div>
+      <div class="gpsline" id="gpsline"></div>
+      <p class="hint" data-i="camHint"></p>
+      <div id="resultBox"></div>
+    </section>
+
+    <section id="tab-list" class="hidden"></section>
+
+    <section id="tab-map" class="hidden">
+      <div class="result">
+        <div class="kind" data-i="navAbout"></div>
+        <h2 data-i="aboutTitle"></h2>
+        <p class="body" data-i="aboutBody"></p>
+      </div>
+    </section>
+  </main>
+
+  <footer data-i="footer"></footer>
+</div>
+
+<script>
+const API = '';
+let stream = null, lastPos = null, lang = 'ru', catalogue = [], lastData = null;
+
+// ---------- translation strings ----------
+const T = {
+  ru: {
+    eyebrow:'Ростов-на-Дону · с 1885 года',
+    title:'Прогулка по Пушкинской',
+    tagline:'Наведите камеру на здание или памятник — и узнайте его историю',
+    navCam:'Камера', navList:'Все объекты', navAbout:'О маршруте',
+    camStart:'Включить камеру', camOn:'Камера включена', identify:'Определить',
+    uploadBtn:'Загрузить фото с устройства',
+    camHint:'Совет: снимайте фасад целиком при дневном свете. Геолокация ускоряет определение.',
+    modeAuto:'Режим: GPS + фото (на улице)', modeImage:'Режим: только фото (для теста)', modeGps:'Режим: только GPS',
+    gpsNone:'Геолокация: не запрошена', gpsOk:'Геолокация', gpsDenied:'Геолокация: отклонена (определение по фото)',
+    gpsUnavail:'Геолокация недоступна',
+    identifying:'Определяем…', notFound:'Объект не найден. Подойдите ближе или включите геолокацию.',
+    modelLoading:'Загрузка модели распознавания…', modelError:'Не удалось загрузить модель. Проверьте интернет.',
+    camStartFirst:'Сначала включите камеру.', camError:'Не удалось открыть камеру. Разрешите доступ к камере.',
+    monument:'Памятник', building:'Здание', confidence:'уверенности',
+    maybe:'Возможно, это:', debug:'Как рассчитано (отладка)', photo:'фото',
+    noPhoto:'Фото будут добавлены после съёмки на месте',
+    aboutTitle:'Пушкинская улица',
+    aboutBody:'Пушкинская (до 1885 года — Кузнецкая) — бульварная улица в центре Ростова-на-Дону, протяжённостью около 3,5 км, средоточие архитектурных памятников конца XIX — начала XX веков. С пересечения с проспектом Чехова улица становится пешеходной. В приложении собраны исторические здания и памятники улицы. Военные объекты в подборку не включены.',
+    footer:'Источники: открытые краеведческие материалы о Пушкинской улице. Учебный проект.'
+  },
+  en: {
+    eyebrow:'Rostov-on-Don · since 1885',
+    title:'Pushkinskaya Walk',
+    tagline:'Point your camera at a building or monument to learn its history',
+    navCam:'Camera', navList:'All sites', navAbout:'About',
+    camStart:'Enable camera', camOn:'Camera on', identify:'Identify',
+    uploadBtn:'Upload photo from device',
+    camHint:'Tip: capture the whole facade in daylight. Location speeds up identification.',
+    modeAuto:'Mode: GPS + photo (on the street)', modeImage:'Mode: photo only (for testing)', modeGps:'Mode: GPS only',
+    gpsNone:'Location: not requested', gpsOk:'Location', gpsDenied:'Location: denied (using photo)',
+    gpsUnavail:'Location unavailable',
+    identifying:'Identifying…', notFound:'No site found. Move closer or enable location.',
+    modelLoading:'Loading recognition model…', modelError:'Could not load the model. Check your connection.',
+    camStartFirst:'Enable the camera first.', camError:'Could not open the camera. Please allow camera access.',
+    monument:'Monument', building:'Building', confidence:'confidence',
+    maybe:'Could also be:', debug:'How it was scored (debug)', photo:'photo',
+    noPhoto:'Photos will be added after the on-site shoot',
+    aboutTitle:'Pushkinskaya Street',
+    aboutBody:'Pushkinskaya (called Kuznetskaya before 1885) is a boulevard in the centre of Rostov-on-Don, about 3.5 km long and rich in architectural monuments of the late 19th and early 20th centuries. From its crossing with Chekhov Avenue it becomes pedestrian. This app collects the street\u2019s historical buildings and monuments. Military objects are excluded.',
+    footer:'Sources: open local-history materials on Pushkinskaya Street. Student project.'
+  }
+};
+
+function t(key){ return (T[lang] && T[lang][key]) || key; }
+
+// ---------- language ----------
+function setLang(l){
+  lang = l;
+  document.documentElement.lang = l;
+  document.getElementById('langRu').classList.toggle('on', l==='ru');
+  document.getElementById('langEn').classList.toggle('on', l==='en');
+  // apply all static strings
+  document.querySelectorAll('[data-i]').forEach(el=>{ el.textContent = t(el.getAttribute('data-i')); });
+  // mode dropdown
+  document.getElementById('modeSel').innerHTML =
+    `<option value="auto">${t('modeAuto')}</option>`+
+    `<option value="image">${t('modeImage')}</option>`+
+    `<option value="gps">${t('modeGps')}</option>`;
+  // dynamic bits
+  if(document.getElementById('btnStart').dataset.on==='1') document.getElementById('btnStart').textContent=t('camOn');
+  if(!lastPos) document.getElementById('gpsline').textContent=t('gpsNone');
+  else document.getElementById('gpsline').textContent=t('gpsOk')+': '+lastPos.lat.toFixed(5)+', '+lastPos.lng.toFixed(5);
+  // re-render dynamic views in the new language
+  if(lastData) renderResult(lastData);
+  if(catalogue.length){ catalogue=[]; loadCatalogue(); }
+}
+
+// pick the right language field from a site object
+function L(o, base){ return lang==='en' ? (o[base+'En']||o[base]) : o[base]; }
+function kindLabel(type){ return type==='monument'?t('monument'):t('building'); }
+
+// ---------- tabs ----------
+function showTab(tab){
+  ['cam','list','map'].forEach(x=>document.getElementById('tab-'+x).classList.toggle('hidden', x!==tab));
+  const sel=document.getElementById('navSelect'); if(sel.value!==tab) sel.value=tab;
+  if(tab==='list') loadCatalogue();
+}
+
+// ---------- geolocation ----------
+function requestGps(){
+  if(!navigator.geolocation){ document.getElementById('gpsline').textContent=t('gpsUnavail'); return; }
+  navigator.geolocation.getCurrentPosition(
+    p=>{ lastPos={lat:p.coords.latitude,lng:p.coords.longitude};
+         document.getElementById('gpsline').textContent=t('gpsOk')+': '+lastPos.lat.toFixed(5)+', '+lastPos.lng.toFixed(5); },
+    ()=>{ document.getElementById('gpsline').textContent=t('gpsDenied'); },
+    { enableHighAccuracy:true, timeout:8000 }
+  );
+}
+
+// ---------- camera ----------
+async function startCamera(){
+  try{
+    stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:'environment' }, audio:false });
+    document.getElementById('video').srcObject=stream;
+    document.getElementById('btnShot').disabled=false;
+    const b=document.getElementById('btnStart'); b.textContent=t('camOn'); b.dataset.on='1';
+    requestGps();
+  }catch(e){ alert(t('camError')); }
+}
+
+function histogramFromCanvas(canvas){
+  // (Legacy color histogram — kept for reference; recognition now uses MobileNet
+  // embeddings via embedding.js, which is far more accurate.)
+  const ctx=canvas.getContext('2d'); const {width,height}=canvas;
+  const data=ctx.getImageData(0,0,width,height).data;
+  const BINS=4, hist=new Array(BINS*BINS*BINS).fill(0); let count=0;
+  for(let i=0;i<data.length;i+=4){ if(data[i+3]<16) continue;
+    hist[(data[i]>>6)*BINS*BINS+(data[i+1]>>6)*BINS+(data[i+2]>>6)]++; count++; }
+  if(count) for(let i=0;i<hist.length;i++) hist[i]/=count;
+  return hist;
+}
+
+let sigCache=null;
+async function getSignatures(){
+  if(sigCache) return sigCache;
+  const r=await fetch(API+'/api/signatures'); sigCache=await r.json(); return sigCache;
+}
+
+async function identify(){
+  const v=document.getElementById('video');
+  if(!v.videoWidth){ alert(t('camStartFirst')); return; }
+  // hide any previous upload preview; we're using the live camera
+  document.getElementById('uploadPreview').classList.add('hidden');
+  document.getElementById('video').classList.remove('hidden');
+  await runRecognition(v);
+}
+
+// Identify from a photo the user picks off their device.
+async function identifyFromUpload(event){
+  const file=event.target.files && event.target.files[0];
+  if(!file) return;
+  const box=document.getElementById('resultBox');
+
+  // Show the chosen photo in place of the camera feed.
+  const preview=document.getElementById('uploadPreview');
+  const url=URL.createObjectURL(file);
+  await new Promise((res,rej)=>{ preview.onload=res; preview.onerror=rej; preview.src=url; });
+  preview.classList.remove('hidden');
+  document.getElementById('video').classList.add('hidden');
+
+  // If we're in a GPS-using mode but have no fix yet (camera never started),
+  // try to get one so location can still contribute to the score.
+  const mode=document.getElementById('modeSel').value;
+  if(mode!=='image' && !lastPos) requestGps();
+
+  await runRecognition(preview);
+  event.target.value=''; // reset so the same file can be re-picked
+}
+
+// Shared recognition: takes any image source (video frame or <img>) and scores it.
+async function runRecognition(sourceEl){
+  const box=document.getElementById('resultBox');
+  const mode=document.getElementById('modeSel').value;
+
+  // 1) Run MobileNet on the source to get its feature embedding.
+  let queryEmbedding=null;
+  if(mode!=='gps'){
+    box.innerHTML='<p class="hint">'+t('modelLoading')+'</p>';
+    try{
+      await Embed.load(()=>{});
+      queryEmbedding=await Embed.embed(sourceEl);
+    }catch(e){
+      box.innerHTML='<p class="hint">'+t('modelError')+'</p>'; return;
+    }
+  }
+  box.innerHTML='<p class="hint">'+t('identifying')+'</p>';
+
+  // 2) Fetch site signatures + GPS coords.
+  const sites=await getSignatures();
+
+  // 3) Score every site: image similarity (client-side) + GPS proximity.
+  const useGps = mode!=='image' && lastPos;
+  const scored=sites.map(s=>{
+    let imageScore=null, gpsMeters=null;
+    // Multiple signatures per site: compare against EACH stored embedding and
+    // take the best (highest) similarity — matches the closest photographed
+    // viewpoint instead of a blurred average of all of them.
+    if(queryEmbedding && Array.isArray(s.embeddings) && s.embeddings.length){
+      let best=0;
+      for(const emb of s.embeddings){
+        const sim=Embed.similarity(queryEmbedding, emb);
+        if(sim>best) best=sim;
+      }
+      imageScore=best;
+    }
+    if(useGps) gpsMeters=haversine(lastPos.lat,lastPos.lng,s.lat,s.lng);
+
+    let conf;
+    if(imageScore!=null && gpsMeters!=null){
+      const gpsConf=Math.max(0,1-gpsMeters/150);
+      conf=0.65*imageScore+0.35*gpsConf;   // image weighted higher than GPS
+    } else if(imageScore!=null){ conf=imageScore; }
+    else if(gpsMeters!=null){ conf=Math.max(0,1-gpsMeters/150); }
+    else conf=0;
+
+    return {...s, imageScore:imageScore!=null?Number(imageScore.toFixed(3)):null,
+      distanceMeters:gpsMeters!=null?Math.round(gpsMeters):null,
+      confidence:Number(conf.toFixed(3))};
+  });
+
+  // In GPS+photo mode, narrow to nearby sites first (within 150m) when GPS exists.
+  let candidates=scored;
+  if(useGps && mode==='auto'){
+    const near=scored.filter(c=>c.distanceMeters!=null && c.distanceMeters<=150);
+    if(near.length) candidates=near;
+  }
+  candidates.sort((a,b)=>b.confidence-a.confidence);
+
+  lastData={ best:candidates[0]||null, candidates:candidates.slice(0,5) };
+  renderResult(lastData);
+}
+
+// Haversine distance in metres, client-side (mirrors the server's formula).
+function haversine(lat1,lng1,lat2,lng2){
+  const R=6371000, toRad=d=>d*Math.PI/180;
+  const dLat=toRad(lat2-lat1), dLng=toRad(lng2-lng1);
+  const s=Math.sin(dLat/2)**2+Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLng/2)**2;
+  return 2*R*Math.asin(Math.sqrt(s));
+}
+
+function renderResult(data){
+  const box=document.getElementById('resultBox');
+  if(!data.best){ box.innerHTML='<p class="hint">'+t('notFound')+'</p>'; return; }
+  const b=data.best;
+  const conf=Math.round(b.confidence*100);
+  const dist=b.distanceMeters!=null?(' · '+b.distanceMeters+' m'):'';
+  const alts=data.candidates.slice(1,4).map(a=>
+    `<div class="alt" onclick="openSite('${a.id}')"><span>${L(a,'name')}</span><span>${Math.round(a.confidence*100)}%</span></div>`).join('');
+  const debug=data.candidates.map(a=>
+    `<div class="alt"><span>${L(a,'name')}</span><span>${a.distanceMeters!=null?a.distanceMeters+'m':'—'} · ${t('photo')} ${a.imageScore!=null?a.imageScore:'—'} · ${Math.round(a.confidence*100)}%</span></div>`).join('');
+  const gallery=(b.images&&b.images.length)
+    ? `<div class="gallery">${b.images.map(src=>`<img src="${src}" alt="">`).join('')}</div>` : '';
+  box.innerHTML=
+    `<div class="result">
+       <div class="conf">${conf}% ${t('confidence')}</div>
+       <div class="kind">${kindLabel(b.type)}${dist}</div>
+       <h2>${L(b,'name')}</h2>
+       <div class="meta">${L(b,'address')} · ${b.year}${L(b,'authors')?(' · '+L(b,'authors')):''}</div>
+       ${gallery}
+       <div class="body">${L(b,'text')}</div>
+       ${alts?`<div class="alts"><h4>${t('maybe')}</h4>${alts}</div>`:''}
+       <div class="alts"><h4>${t('debug')}</h4>${debug}</div>
+     </div>`;
+}
+
+// ---------- catalogue ----------
+async function loadCatalogue(){
+  if(catalogue.length) return;
+  const r=await fetch(API+'/api/sites'); catalogue=await r.json();
+  document.getElementById('tab-list').innerHTML=catalogue.map(s=>{
+    const gallery=(s.images&&s.images.length)
+      ? `<div class="gallery small">${s.images.map(src=>`<img src="${src}" alt="">`).join('')}</div>`
+      : `<div class="nophoto">${t('noPhoto')}</div>`;
+    return `<div class="site" id="site-${s.id}" onclick="toggleSite('${s.id}')">
+       <div class="kind">${kindLabel(s.type)}</div>
+       <h3>${L(s,'name')}</h3>
+       <div class="meta">${L(s,'address')} · ${s.year}</div>
+       <div class="preview">${gallery}${L(s,'text')}</div>
+     </div>`;}).join('');
+}
+function toggleSite(id){ document.getElementById('site-'+id).classList.toggle('open'); }
+function openSite(id){ showTab('list'); setTimeout(()=>{ const el=document.getElementById('site-'+id);
+  el.classList.add('open'); el.scrollIntoView({behavior:'smooth',block:'center'}); },120); }
+
+window.addEventListener('pagehide',()=>{ if(stream) stream.getTracks().forEach(t=>t.stop()); });
+
+// initial render
+setLang('ru');
+</script>
+</body>
+</html>

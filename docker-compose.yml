@@ -1,0 +1,14 @@
+# docker-compose.yml — run the whole app with one command:  docker compose up
+# Stop with Ctrl+C, or run detached with:  docker compose up -d
+
+services:
+  pushkinskaya:
+    build: .
+    ports:
+      - "4000:4000"          # host:container — open http://localhost:4000
+    volumes:
+      # Persist calibration data on the host so it survives restarts/rebuilds.
+      - ./signatures.json:/app/signatures.json
+      # Live-mount your site photo folders so new photos show up without rebuilding.
+      - ./public/sites:/app/public/sites
+    restart: unless-stopped   # auto-restart if it crashes or the host reboots

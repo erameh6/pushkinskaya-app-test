@@ -1,0 +1,10 @@
+{
+  "name": "pushkinskaya-guide",
+  "version": "1.0.0",
+  "description": "Tourist guide app for Pushkinskaya Street, Rostov-on-Don, with camera-based site recognition",
+  "main": "src/server.js",
+  "type": "commonjs",
+  "scripts": { "start": "node src/server.js", "dev": "node --watch src/server.js" },
+  "dependencies": { "dotenv": "^16.4.5", "express": "^4.19.2" },
+  "license": "MIT"
+}
