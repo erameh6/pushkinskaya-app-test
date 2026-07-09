@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: sites-service
+  namespace: pushkinskaya
+spec:
+  selector:
+    app: sites-service
+  ports:
+    - port: 5001
+      targetPort: 5001
+  type: ClusterIP

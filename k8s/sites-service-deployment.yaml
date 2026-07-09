@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sites-service
+  namespace: pushkinskaya
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sites-service
+  template:
+    metadata:
+      labels:
+        app: sites-service
+    spec:
+      containers:
+        - name: sites-service
+          image: sites-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5001
+          readinessProbe:
+            httpGet: { path: /health, port: 5001 }
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: { path: /health, port: 5001 }
+            initialDelaySeconds: 5
+            periodSeconds: 10

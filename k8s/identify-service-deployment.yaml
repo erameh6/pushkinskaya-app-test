@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: identify-service
+  namespace: pushkinskaya
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: identify-service
+  template:
+    metadata:
+      labels:
+        app: identify-service
+    spec:
+      containers:
+        - name: identify-service
+          image: identify-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5002
+          envFrom:
+            - configMapRef:
+                name: pushkinskaya-config
+          volumeMounts:
+            - name: identify-data
+              mountPath: /app/data
+          readinessProbe:
+            httpGet: { path: /health, port: 5002 }
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: { path: /health, port: 5002 }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+      volumes:
+        - name: identify-data
+          persistentVolumeClaim:
+            claimName: identify-data

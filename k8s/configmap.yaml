@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pushkinskaya-config
+  namespace: pushkinskaya
+data:
+  SITES_SERVICE_URL: "http://sites-service:5001"
+  IDENTIFY_SERVICE_URL: "http://identify-service:5002"
