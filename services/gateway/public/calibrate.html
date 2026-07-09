@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Калибровка · Pushkinskaya</title>
+<script src="embedding.js"></script>
+<style>
+  :root{--bg:#0d0d0f;--panel:#16161a;--edge:#2a2a31;--text:#ece9e3;--muted:#9a958c;--gold:#c9a35e;}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);max-width:660px;margin:0 auto;padding:22px;line-height:1.55}
+  h1{font-size:24px;margin-bottom:6px} .sub{color:var(--muted);font-size:13px;margin-bottom:18px}
+  h2{font-size:15px;margin-top:18px}
+  select,button{font-size:14px;padding:11px;border-radius:9px;border:1px solid var(--edge);background:var(--panel);color:var(--text);font-family:'Inter'}
+  button{background:var(--gold);color:#000;border:none;cursor:pointer;font-weight:600}
+  button.ghost{background:none;color:var(--gold);border:1px solid var(--gold)}
+  .row{display:flex;gap:10px;align-items:center;margin:12px 0;flex-wrap:wrap}
+  .thumbs{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  .thumbs img{width:84px;height:110px;object-fit:cover;border-radius:7px;border:1px solid var(--edge)}
+  .note{font-size:13px;color:var(--muted)} .ok{color:#7ec88a} canvas{display:none}
+  input[type=file]{color:var(--muted);font-size:13px}
+  .status{margin-top:8px;font-size:13px}
+</style>
+</head>
+<body>
+<h1>Калибровка распознавания</h1>
+<div class="sub">Transfer learning · MobileNet feature embeddings</div>
+<p class="note">
+  Для каждого объекта добавьте фотографии с разных ракурсов (Задание 2). Модель
+  MobileNet превращает их в признаковые векторы — после этого приложение узнаёт
+  объект по камере (Задание 3). Чем больше фото на объект (рекомендуется 10+), тем
+  точнее. Военные объекты не фотографируйте.
+</p>
+
+<div class="row">
+  <label>Объект:</label>
+  <select id="siteSel"></select>
+  <button class="ghost" onclick="clearSite()">Очистить</button>
+</div>
+<div class="row">
+  <input type="file" id="files" accept="image/*" multiple capture="environment" />
+  <button onclick="processFiles()">Добавить фото</button>
+</div>
+<div class="thumbs" id="thumbs"></div>
+<div class="row">
+  <button onclick="saveSig()">Сохранить сигнатуру</button>
+  <span id="status" class="status note"></span>
+</div>
+
+<canvas id="cv"></canvas>
+
+<script>
+let sites=[], collected=[]; // collected = embeddings for current site
+
+async function load(){
+  const r=await fetch('/api/sites'); sites=await r.json();
+  document.getElementById('siteSel').innerHTML=sites.map(s=>
+    `<option value="${s.id}">${s.name}${s.hasSignature?' ✓':''}</option>`).join('');
+}
+load();
+
+document.getElementById('siteSel').addEventListener('change',()=>{
+  collected=[]; document.getElementById('thumbs').innerHTML=''; setStatus('');
+});
+
+async function processFiles(){
+  const files=[...document.getElementById('files').files];
+  if(!files.length){ alert('Выберите фотографии.'); return; }
+  setStatus('Загрузка модели…');
+  try{ await Embed.load(()=>{}); }catch(e){ setStatus('Ошибка загрузки модели. Проверьте интернет.'); return; }
+
+  for(const f of files){
+    const img=await fileToImage(f);
+    const emb=await Embed.embed(img);     // 1024-d feature vector
+    collected.push(emb);
+    const t=document.createElement('img'); t.src=img.src;
+    document.getElementById('thumbs').appendChild(t);
+    setStatus(collected.length+' фото обработано');
+  }
+}
+
+function fileToImage(file){
+  return new Promise((res,rej)=>{
+    const img=new Image();
+    img.onload=()=>res(img); img.onerror=rej;
+    img.src=URL.createObjectURL(file);
+  });
+}
+
+async function saveSig(){
+  if(!collected.length){ alert('Сначала добавьте фото.'); return; }
+  const id=document.getElementById('siteSel').value;
+  // Send every photo's embedding separately (multiple signatures per site).
+  const r=await fetch('/api/calibrate',{ method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({ id, embeddings:collected, count:collected.length }) });
+  const data=await r.json();
+  setStatus('Сохранено ✓ ('+collected.length+' фото). Объектов калибровано: '+data.calibrated, true);
+  load();
+}
+
+async function clearSite(){
+  const id=document.getElementById('siteSel').value;
+  await fetch('/api/calibrate/clear',{ method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({ id }) });
+  collected=[]; document.getElementById('thumbs').innerHTML='';
+  setStatus('Сигнатура очищена', true); load();
+}
+
+function setStatus(t,ok){ const s=document.getElementById('status'); s.textContent=t; s.className='status '+(ok?'ok':'note'); }
+</script>
+</body>
+</html>

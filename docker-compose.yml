@@ -2,13 +2,37 @@
 # Stop with Ctrl+C, or run detached with:  docker compose up -d
 
 services:
-  pushkinskaya:
-    build: .
+  sites-service:
+    build: ./services/sites-service
     ports:
-      - "4000:4000"          # host:container — open http://localhost:4000
+      - "5001:5001"
     volumes:
-      # Persist calibration data on the host so it survives restarts/rebuilds.
-      - ./signatures.json:/app/signatures.json
-      # Live-mount your site photo folders so new photos show up without rebuilding.
-      - ./public/sites:/app/public/sites
-    restart: unless-stopped   # auto-restart if it crashes or the host reboots
+      - ./services/sites-service/photos:/app/photos
+    restart: unless-stopped
+
+  identify-service:
+    build: ./services/identify-service
+    ports:
+      - "5002:5002"
+    environment:
+      - SITES_SERVICE_URL=http://sites-service:5001
+    volumes:
+      - identify-data:/app/data
+    depends_on:
+      - sites-service
+    restart: unless-stopped
+
+  gateway:
+    build: ./services/gateway
+    ports:
+      - "4000:4000"
+    environment:
+      - SITES_SERVICE_URL=http://sites-service:5001
+      - IDENTIFY_SERVICE_URL=http://identify-service:5002
+    depends_on:
+      - sites-service
+      - identify-service
+    restart: unless-stopped
+
+volumes:
+  identify-data:
